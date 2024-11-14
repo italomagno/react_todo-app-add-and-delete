@@ -10,14 +10,15 @@ export interface FooterProps {
   setError: (error: string) => void;
   editingTodoId: number[];
   setFilteredTodos: (todos: Todo[]) => void;
+  setTodos: (todos: Todo[]) => void;
 }
 export function Footer({
   todos,
   isActiveFilter,
   setEditingTodoId,
-  loadAllTodos,
   setError,
   editingTodoId,
+  setTodos,
   setFilteredTodos,
 }: FooterProps) {
   const [filter, setFilter] = useState('all');
@@ -43,17 +44,26 @@ export function Footer({
     const completedTodos = todos.filter(t => t.completed);
     const completedTodoIds = completedTodos.map(t => t.id);
 
-    try {
-      setEditingTodoId([...editingTodoId, ...completedTodoIds]);
-      await Promise.all(completedTodos.map(t => deleteTodo(t.id)));
-    } catch (e) {
-      setError('Unable to delete a todo');
+    setEditingTodoId([...editingTodoId, ...completedTodoIds]);
+
+    const successfulDeletes: number[] = [];
+
+    for (const todo of completedTodos) {
+      try {
+        await deleteTodo(todo.id);
+        successfulDeletes.push(todo.id);
+      } catch (error) {
+        setError('Unable to delete a todo');
+      }
     }
+
+    const newTodos = todos.filter(t => !successfulDeletes.includes(t.id));
 
     setEditingTodoId(
       editingTodoId.filter(id => !completedTodoIds.includes(id)),
     );
-    loadAllTodos();
+    setFilteredTodos(newTodos);
+    setTodos(newTodos);
   }
 
   return (
@@ -64,7 +74,6 @@ export function Footer({
             {`${todos.filter(t => !t.completed).length} items left`}
           </span>
 
-          {/* Active link should have the 'selected' class */}
           <nav className="filter" data-cy="Filter">
             <a
               onClick={() => handleFilterTodos('all')}
@@ -96,17 +105,15 @@ export function Footer({
             </a>
           </nav>
 
-          {/* this button should be disabled if there are no completed todos */}
-          {todos.some(t => t.completed) && (
-            <button
-              type="button"
-              className="todoapp__clear-completed"
-              data-cy="ClearCompletedButton"
-              onClick={handleDeleteAllCompletedTodos}
-            >
-              Clear completed
-            </button>
-          )}
+          <button
+            type="button"
+            className={`todoapp__clear-completed`}
+            data-cy="ClearCompletedButton"
+            disabled={!todos.some(t => t.completed)}
+            onClick={handleDeleteAllCompletedTodos}
+          >
+            Clear completed
+          </button>
         </footer>
       )}
     </>

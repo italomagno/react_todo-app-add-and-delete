@@ -8,7 +8,6 @@ interface TodoListProps {
   filteredTodos: Todo[];
   editingTodoId: number[];
   setEditingTodoId: (ids: number[]) => void;
-  loadAllTodos: () => void;
   setError: (error: string) => void;
   todos: Todo[];
   setTodos: (todos: Todo[]) => void;
@@ -19,7 +18,6 @@ export function TodoList({
   filteredTodos,
   editingTodoId,
   setEditingTodoId,
-  loadAllTodos,
   setError,
   setTodos,
   setFilteredTodos,
@@ -90,7 +88,8 @@ export function TodoList({
       setEditingTodoId([...editingTodoId, todoId]);
       await deleteTodo(todoId);
       setEditingTodoId(editingTodoId.filter(id => id !== todoId));
-      loadAllTodos();
+      setTodos(todos.filter(t => t.id !== todoId));
+      setFilteredTodos(filteredTodos.filter(t => t.id !== todoId));
     } catch (e) {
       setError('Unable to delete a todo');
       setEditingTodoId(editingTodoId.filter(id => id !== todoId));

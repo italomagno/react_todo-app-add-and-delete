@@ -45,12 +45,14 @@ export function Header({
     try {
       if (!newTodoTitle) {
         setError('Title should not be empty');
+        inputNewTodo.current?.focus();
 
         return;
       }
 
       if (containOnlyWhiteSpaces) {
         setError('Title should not be empty');
+        inputNewTodo.current?.focus();
 
         return;
       }
@@ -75,10 +77,10 @@ export function Header({
       setNewTodoTitle('');
       setIsAddingNewTodo(false);
     } catch (er) {
-      inputNewTodo.current?.focus();
       setError('Unable to add a todo');
       setEditingTodoId(editingTodoId.filter(id => id !== newTodoIdAvailable));
       setFilteredTodos(filteredTodos.filter(t => t.id !== newTodoIdAvailable));
+      setTodos(todos.filter(t => t.id !== newTodoIdAvailable));
       setIsAddingNewTodo(false);
     }
   }
@@ -127,7 +129,7 @@ export function Header({
 
   useEffect(() => {
     inputNewTodo.current?.focus();
-  }, [todos.length]);
+  }, [todos.length, isAddingNewTodo]);
 
   return (
     <header className="todoapp__header">

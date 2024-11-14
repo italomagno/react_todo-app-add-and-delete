@@ -69,7 +69,6 @@ export const App: React.FC = () => {
             filteredTodos={filteredTodos}
             editingTodoId={editingTodoId}
             setEditingTodoId={setEditingTodoId}
-            loadAllTodos={loadAllTodos}
             setError={setError}
             todos={todos}
             setTodos={setTodos}
@@ -82,6 +81,7 @@ export const App: React.FC = () => {
           isActiveFilter={isActiveFilter}
           setEditingTodoId={setEditingTodoId}
           loadAllTodos={loadAllTodos}
+          setTodos={setTodos}
           setError={setError}
           editingTodoId={editingTodoId}
         />
