@@ -11,8 +11,9 @@ export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [filteredTodos, setFilteredTodos] = useState<Todo[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [editingTodoId, setEditingTodoId] = useState<number[]>([]);
+  const [editingTodosId, setEditingTodosId] = useState<number[]>([]);
   const [isActiveFilter, setIsActiveFilter] = useState(false);
+  const [filter, setFilter] = useState('all');
 
   async function loadAllTodos() {
     try {
@@ -42,8 +43,22 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (todos.length === 0) {
       setIsActiveFilter(false);
+
+      return;
     }
+
+    setIsActiveFilter(true);
   }, [todos.length]);
+
+  useEffect(() => {
+    if (filter === 'completed') {
+      setFilteredTodos(prev => prev.filter(t => t.completed));
+    }
+
+    if (filter === 'active') {
+      setFilteredTodos(prev => prev.filter(t => !t.completed));
+    }
+  }, [filter, filteredTodos, todos]);
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -55,10 +70,9 @@ export const App: React.FC = () => {
       <div className="todoapp__content">
         <Header
           todos={todos}
-          setEditingTodoId={setEditingTodoId}
-          loadAllTodos={loadAllTodos}
+          setEditingTodosId={setEditingTodosId}
           setError={setError}
-          editingTodoId={editingTodoId}
+          editingTodosId={editingTodosId}
           setTodos={setTodos}
           setFilteredTodos={setFilteredTodos}
           setIsActiveFilter={setIsActiveFilter}
@@ -66,9 +80,10 @@ export const App: React.FC = () => {
         />
         <section className="todoapp__main" data-cy="TodoList">
           <TodoList
+            filter={filter}
             filteredTodos={filteredTodos}
-            editingTodoId={editingTodoId}
-            setEditingTodoId={setEditingTodoId}
+            editingTodosId={editingTodosId}
+            setEditingTodosId={setEditingTodosId}
             setError={setError}
             todos={todos}
             setTodos={setTodos}
@@ -76,14 +91,16 @@ export const App: React.FC = () => {
           />
         </section>
         <Footer
+          filter={filter}
+          setFilter={setFilter}
           setFilteredTodos={setFilteredTodos}
           todos={todos}
           isActiveFilter={isActiveFilter}
-          setEditingTodoId={setEditingTodoId}
+          setEditingTodosId={setEditingTodosId}
           loadAllTodos={loadAllTodos}
           setTodos={setTodos}
           setError={setError}
-          editingTodoId={editingTodoId}
+          editingTodosId={editingTodosId}
         />
       </div>
 

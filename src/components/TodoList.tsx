@@ -1,28 +1,33 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable jsx-a11y/label-has-associated-control */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Todo } from '../types/Todo';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
 import { deleteTodo, updateTodo } from '../api/todos';
+import { TodoComponent } from './TodoComponent';
 
 interface TodoListProps {
   filteredTodos: Todo[];
-  editingTodoId: number[];
-  setEditingTodoId: (ids: number[]) => void;
+  editingTodosId: number[];
+  setEditingTodosId: (ids: number[]) => void;
   setError: (error: string) => void;
   todos: Todo[];
   setTodos: (todos: Todo[]) => void;
   setFilteredTodos: (todos: Todo[]) => void;
+  filter: string;
 }
 export function TodoList({
   todos,
   filteredTodos,
-  editingTodoId,
-  setEditingTodoId,
+  editingTodosId,
+  setEditingTodosId,
   setError,
   setTodos,
   setFilteredTodos,
 }: TodoListProps) {
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
+
+  const TodoTitleFieldRef = React.useRef<HTMLInputElement>(null);
 
   function handleSelectedTodoChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!selectedTodo) {
@@ -41,10 +46,10 @@ export function TodoList({
         throw new Error('Unable to update todo');
       }
 
-      setEditingTodoId([...editingTodoId, todo.id]);
+      setEditingTodosId([...editingTodosId, todo.id]);
       const updatedTodoFromServer = await updateTodo({
         ...todo,
-        title: selectedTodo.title,
+        title: selectedTodo.title.trim(),
       });
       const newTodos = todos.map(t =>
         t.id === todo.id ? updatedTodoFromServer : t,
@@ -52,10 +57,12 @@ export function TodoList({
 
       setTodos(newTodos);
       setFilteredTodos(newTodos);
-      setEditingTodoId(editingTodoId.filter(id => id !== todo.id));
+      setEditingTodosId(editingTodosId.filter(id => id !== todo.id));
+      setSelectedTodo(null);
     } catch (e) {
       setError('Unable to update a todo');
-      setEditingTodoId(editingTodoId.filter(id => id !== todo.id));
+      setEditingTodosId(editingTodosId.filter(id => id !== todo.id));
+      setSelectedTodo(todo);
     }
   }
 
@@ -63,7 +70,7 @@ export function TodoList({
     try {
       const todo = todos.find(t => t.id === todoId);
 
-      setEditingTodoId([...editingTodoId, todoId]);
+      setEditingTodosId([...editingTodosId, todoId]);
       if (!todo) {
         throw new Error('Todo not found');
       }
@@ -74,29 +81,29 @@ export function TodoList({
         t.id === todoId ? updatedTodoFromServer : t,
       );
 
-      setEditingTodoId(editingTodoId.filter(id => id !== todoId));
+      setEditingTodosId(editingTodosId.filter(id => id !== todoId));
       setTodos(newTodos);
       setFilteredTodos(newTodos);
     } catch (e) {
       setError('Unable to update a todo');
-      setEditingTodoId(editingTodoId.filter(id => id !== todoId));
+      setEditingTodosId(editingTodosId.filter(id => id !== todoId));
     }
   }
 
   async function handleRemoveTodo(todoId: number) {
     try {
-      setEditingTodoId([...editingTodoId, todoId]);
+      setEditingTodosId([...editingTodosId, todoId]);
       await deleteTodo(todoId);
-      setEditingTodoId(editingTodoId.filter(id => id !== todoId));
+      setEditingTodosId(editingTodosId.filter(id => id !== todoId));
       setTodos(todos.filter(t => t.id !== todoId));
       setFilteredTodos(filteredTodos.filter(t => t.id !== todoId));
     } catch (e) {
       setError('Unable to delete a todo');
-      setEditingTodoId(editingTodoId.filter(id => id !== todoId));
+      setEditingTodosId(editingTodosId.filter(id => id !== todoId));
     }
   }
 
-  async function handleSubmitForm(
+  async function handleEditTodoTitle(
     e: React.FormEvent<HTMLFormElement>,
     todo: Todo,
   ) {
@@ -107,7 +114,6 @@ export function TodoList({
 
     if (selectedTodo && !selectedTodo.title) {
       await handleRemoveTodo(todo.id);
-      setSelectedTodo(null);
 
       return;
     } else if (selectedTodo.title === todo.title) {
@@ -116,11 +122,29 @@ export function TodoList({
       return;
     } else if (selectedTodo.title !== todo.title) {
       await handleEditTitleOfTodo(selectedTodo);
-      setSelectedTodo(null);
 
       return;
     }
   }
+
+  useEffect(() => {
+    if (selectedTodo) {
+      TodoTitleFieldRef.current?.focus();
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          setTimeout(() => setSelectedTodo(null), 500);
+        }
+      });
+    }
+
+    return () => {
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          setTimeout(() => setSelectedTodo(null), 500);
+        }
+      });
+    };
+  }, [selectedTodo]);
 
   return (
     <TransitionGroup component={null}>
@@ -134,66 +158,20 @@ export function TodoList({
           enter
           exit
         >
-          <div
-            data-cy="Todo"
-            className={`todo ${todo.completed ? 'completed' : ''}`}
-          >
-            <label className="todo__status-label">
-              <input
-                data-cy="TodoStatus"
-                type="checkbox"
-                className="todo__status"
-                checked={todo.completed}
-                onClick={() => handleUpdateTodoStatus(todo.id)}
-              />
-            </label>
-
-            {!selectedTodo ? (
-              <span
-                onDoubleClick={() => setSelectedTodo(todo)}
-                data-cy="TodoTitle"
-                className="todo__title"
-              >
-                {todo.title}
-              </span>
-            ) : (
-              <form onSubmit={e => handleSubmitForm(e, todo)}>
-                <input
-                  data-cy="TodoTitleField"
-                  type="text"
-                  className="todo__title-field"
-                  onChange={handleSelectedTodoChange}
-                  placeholder="Empty todo will be deleted"
-                  onBlur={e =>
-                    handleSubmitForm(
-                      e as unknown as React.FormEvent<HTMLFormElement>,
-                      todo,
-                    )
-                  }
-                  value={selectedTodo.title}
-                />
-              </form>
-            )}
-
-            {/* Remove button appears only on hover */}
-            <button
-              onClick={() => handleRemoveTodo(todo.id)}
-              type="button"
-              className="todo__remove"
-              data-cy="TodoDelete"
-            >
-              ×
-            </button>
-
-            {/* overlay will cover the todo while it is being deleted or updated */}
-            <div
-              data-cy="TodoLoader"
-              className={`modal overlay ${editingTodoId.includes(todo.id) ? 'is-active' : ''}`}
-            >
-              <div className="modal-background has-background-white-ter" />
-              <div className="loader" />
-            </div>
-          </div>
+          {
+            <TodoComponent
+              key={todo.id}
+              todo={todo}
+              selectedTodo={selectedTodo}
+              setSelectedTodo={setSelectedTodo}
+              handleEditTodoTitle={handleEditTodoTitle}
+              handleRemoveTodo={handleRemoveTodo}
+              handleUpdateTodoStatus={handleUpdateTodoStatus}
+              TodoTitleFieldRef={TodoTitleFieldRef}
+              handleSelectedTodoChange={handleSelectedTodoChange}
+              editingTodosId={editingTodosId}
+            />
+          }
         </CSSTransition>
       ))}
     </TransitionGroup>

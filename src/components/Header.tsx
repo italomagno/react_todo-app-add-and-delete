@@ -1,13 +1,14 @@
+/* eslint-disable @typescript-eslint/indent */
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { useEffect, useRef, useState } from 'react';
 import { Todo } from '../types/Todo';
-import { addTodo, updateTodo, USER_ID } from '../api/todos';
+import { addTodo, updateTodo } from '../api/todos';
 
 interface HeaderProps {
   todos: Todo[];
-  setEditingTodoId: (ids: number[]) => void;
-  loadAllTodos: () => void;
+  setEditingTodosId: (ids: number[]) => void;
   setError: (error: string) => void;
-  editingTodoId: number[];
+  editingTodosId: number[];
   setTodos: (todos: Todo[]) => void;
   setFilteredTodos: (todos: Todo[]) => void;
   setIsActiveFilter: (isActive: boolean) => void;
@@ -16,14 +17,11 @@ interface HeaderProps {
 
 export function Header({
   todos,
-  setEditingTodoId,
+  setEditingTodosId,
   setTodos,
   setFilteredTodos,
-  setIsActiveFilter,
-  loadAllTodos,
-  filteredTodos,
   setError,
-  editingTodoId,
+  editingTodosId,
 }: HeaderProps) {
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [isAddingNewTodo, setIsAddingNewTodo] = useState(false);
@@ -36,95 +34,82 @@ export function Header({
 
   async function handleAddNewTodo(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (!newTodoTitle.trim()) {
+      setError('Title should not be empty');
+      inputNewTodo.current?.focus();
+
+      return;
+    }
+
     const newTodoIdAvailable = todos.length
       ? todos[todos.length - 1].id + 1
       : 1;
 
-    const containOnlyWhiteSpaces = newTodoTitle.trim().length === 0;
-
     try {
-      if (!newTodoTitle) {
-        setError('Title should not be empty');
-        inputNewTodo.current?.focus();
-
-        return;
-      }
-
-      if (containOnlyWhiteSpaces) {
-        setError('Title should not be empty');
-        inputNewTodo.current?.focus();
-
-        return;
-      }
-
       setIsAddingNewTodo(true);
-      setEditingTodoId([...editingTodoId, newTodoIdAvailable]);
-      const newTodo: Todo = {
-        id: newTodoIdAvailable,
+      setEditingTodosId([...editingTodosId, newTodoIdAvailable]);
+
+      const newTodo = {
         title: newTodoTitle.trim(),
         completed: false,
-        userId: USER_ID,
+        id: newTodoIdAvailable,
       };
 
-      setFilteredTodos([...todos, newTodo]);
-      setIsActiveFilter(true);
+      setFilteredTodos([...todos, newTodo as Todo]);
+
       const responseFromAddedTodo = await addTodo(newTodoTitle.trim());
 
+      setFilteredTodos([...todos].filter(t => t.id !== newTodoIdAvailable));
       setTodos([...todos, responseFromAddedTodo]);
       setFilteredTodos([...todos, responseFromAddedTodo]);
-
-      setEditingTodoId(editingTodoId.filter(id => id !== newTodoIdAvailable));
       setNewTodoTitle('');
-      setIsAddingNewTodo(false);
     } catch (er) {
+      setEditingTodosId(
+        [...editingTodosId].filter(id => id !== newTodoIdAvailable),
+      );
       setError('Unable to add a todo');
-      setEditingTodoId(editingTodoId.filter(id => id !== newTodoIdAvailable));
-      setFilteredTodos(filteredTodos.filter(t => t.id !== newTodoIdAvailable));
-      setTodos(todos.filter(t => t.id !== newTodoIdAvailable));
+      setFilteredTodos([...todos].filter(t => t.id !== newTodoIdAvailable));
+    } finally {
+      setEditingTodosId(editingTodosId.filter(id => id !== newTodoIdAvailable));
+
       setIsAddingNewTodo(false);
     }
   }
 
-  async function handleToggleAllTodos() {
-    try {
-      const areAllTodosCompleted = todos.every(t => t.completed);
-      const areAlltodosIncomplete = todos.every(t => !t.completed);
+  function handleToggleAllTodos() {
+    const successfulUpdatedTodo: number[] = [];
+    const hasAllSameStatus = todos.every(t => t.completed);
+    const todosToUpdate = hasAllSameStatus
+      ? todos
+      : todos.filter(t => !t.completed);
 
-      if (areAllTodosCompleted) {
-        setEditingTodoId([...editingTodoId, ...todos.map(t => t.id)]);
-        const updatedTodos = todos.map(t => ({ ...t, completed: false }));
+    setEditingTodosId([...editingTodosId, ...todosToUpdate.map(t => t.id)]);
 
-        await Promise.all(updatedTodos.map(t => updateTodo(t)));
-        setEditingTodoId([]);
-        loadAllTodos();
+    const updatePromises = todosToUpdate.map(todo =>
+      updateTodo({
+        ...todo,
+        completed: !todo.completed,
+      })
+        .then(res => {
+          successfulUpdatedTodo.push(res.id);
+        })
+        .catch(() => {
+          setError('Unable to update todo');
+        }),
+    );
 
-        return;
-      } else if (areAlltodosIncomplete) {
-        setEditingTodoId([...editingTodoId, ...todos.map(t => t.id)]);
-        const updatedTodos = todos.map(t => ({ ...t, completed: true }));
+    Promise.all(updatePromises).then(() => {
+      const newTodosUpdated = todos.map(t =>
+        successfulUpdatedTodo.includes(t.id)
+          ? { ...t, completed: !t.completed }
+          : t,
+      );
 
-        await Promise.all(updatedTodos.map(t => updateTodo(t)));
-        setEditingTodoId([]);
-        loadAllTodos();
-
-        return;
-      } else {
-        const todosToEdit = todos.filter(t => !t.completed);
-
-        setEditingTodoId([...editingTodoId, ...todosToEdit.map(t => t.id)]);
-        const updatedTodos = todosToEdit.map(t => ({ ...t, completed: true }));
-
-        await Promise.all(updatedTodos.map(t => updateTodo(t)));
-        setEditingTodoId([]);
-        loadAllTodos();
-
-        return;
-      }
-    } catch (e) {
-      setError('Unable to update todo');
-      setEditingTodoId([]);
-      loadAllTodos();
-    }
+      setTodos(newTodosUpdated);
+      setFilteredTodos(newTodosUpdated);
+      setEditingTodosId([]);
+    });
   }
 
   useEffect(() => {

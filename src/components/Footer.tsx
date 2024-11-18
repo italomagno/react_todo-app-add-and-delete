@@ -1,29 +1,30 @@
-import { useState } from 'react';
 import { deleteTodo } from '../api/todos';
 import { Todo } from '../types/Todo';
 
 export interface FooterProps {
   todos: Todo[];
   isActiveFilter: boolean;
-  setEditingTodoId: (ids: number[]) => void;
+  setEditingTodosId: (ids: number[]) => void;
   loadAllTodos: () => void;
   setError: (error: string) => void;
-  editingTodoId: number[];
+  editingTodosId: number[];
   setFilteredTodos: (todos: Todo[]) => void;
   setTodos: (todos: Todo[]) => void;
+  filter: string;
+  setFilter: (filter: string) => void;
 }
 export function Footer({
   todos,
   isActiveFilter,
-  setEditingTodoId,
+  setEditingTodosId,
   setError,
-  editingTodoId,
+  editingTodosId,
   setTodos,
   setFilteredTodos,
+  filter,
+  setFilter,
 }: FooterProps) {
-  const [filter, setFilter] = useState('all');
-
-  async function handleFilterTodos(filterString: string) {
+  function handleFilterTodos(filterString: string) {
     setFilter(filterString);
     switch (filterString) {
       case 'all':
@@ -44,7 +45,7 @@ export function Footer({
     const completedTodos = todos.filter(t => t.completed);
     const completedTodoIds = completedTodos.map(t => t.id);
 
-    setEditingTodoId([...editingTodoId, ...completedTodoIds]);
+    setEditingTodosId([...editingTodosId, ...completedTodoIds]);
 
     const successfulDeletes: number[] = [];
 
@@ -59,8 +60,8 @@ export function Footer({
 
     const newTodos = todos.filter(t => !successfulDeletes.includes(t.id));
 
-    setEditingTodoId(
-      editingTodoId.filter(id => !completedTodoIds.includes(id)),
+    setEditingTodosId(
+      editingTodosId.filter(id => !completedTodoIds.includes(id)),
     );
     setFilteredTodos(newTodos);
     setTodos(newTodos);
